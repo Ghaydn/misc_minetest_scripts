@@ -4,9 +4,10 @@
 --slow blinker will automatically turn on after programming
 --fast blinker must be turned on first
 --
---License: GNU APL
+--License: GNU AGPL
 --Copyright Ghaydn (ghaydn@ya.ru), 2021
 --
+--https://github.com/Ghaydn/misc_minetest_scripts/blob/main/blinker.lua
 
 ---------------------------------
 --configurable variables
