@@ -3,6 +3,10 @@
 --can be turned on|off
 --slow blinker will automatically turn on after programming
 --fast blinker must be turned on first
+--
+--License: GNU APL
+--Copyright Ghaydn (ghaydn@ya.ru), 2021
+--
 
 ---------------------------------
 --configurable variables
