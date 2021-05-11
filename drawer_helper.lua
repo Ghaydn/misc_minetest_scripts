@@ -2,6 +2,10 @@
 --helps to fill drawer from a chest
 --uses LCD display to show if all ok or if something stuck
 --switches to the idle (slow) mode if no items is detected last 3 cycles
+--
+--License: GNU APL
+--Copyright Ghaydn (ghaydn@ya.ru), 2021
+--
 
 --configurable variables: ports and blink rate
 local drawer = "black" --not really intended
