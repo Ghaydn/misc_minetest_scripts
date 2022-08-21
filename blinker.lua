@@ -9,7 +9,7 @@
 --Can blink in different phase
 --
 --
---License: GNU GPL
+--License: GNU AGPL
 --Copyright Ghaydn (ghaydn@ya.ru), 2022
 --
 --https://github.com/Ghaydn/misc_minetest_scripts/blob/main/blinker.lua
