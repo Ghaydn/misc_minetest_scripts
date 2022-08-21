@@ -1,60 +1,141 @@
 --BLINKER
+--can be used with mesecons-luacontroller and pipeworks luacontrolled tube
+--
 --blinks with pre-configured rate
 --can be turned on|off
---slow blinker will automatically turn on after programming
---fast blinker must be turned on first
+--can automatically turn on after programming
+--Will automatically turn off when no sinal on detector for some wait time
+--(if wait_time > 0 and detector port is defined)
+--Can blink in different phase
 --
---License: GNU AGPL
---Copyright Ghaydn (ghaydn@ya.ru), 2021
+--
+--License: GNU GPL
+--Copyright Ghaydn (ghaydn@ya.ru), 2022
 --
 --https://github.com/Ghaydn/misc_minetest_scripts/blob/main/blinker.lua
+--
 
----------------------------------
---configurable variables
-local blinks = {
-a = "blink",
-b = "blink",
-c = "switch",
-d = "none"
+-----------------------------------------------------
+-----------------------------------------------------
+-- configurable variables----------------------------
+
+local rate = 0.5        
+local sequence = { -- blinking sequence
+	{"d", "b"},    -- list or ports that will be ON at current step
+	{"b"},         -- all other ports will be OFF
+	{},            -- there can be also empty steps with all ports off
+	{"d", "c"},    -- any reasonable number of steps is allowed
 }
 
-local rate = 0.2
-----------------------------------
+--- These variables can be not defined
+local switch = "a"      -- if undefined, then autostart will be enabled anyway
+local autostart = false
+
+local detector-- = "b"    -- if defined, wait time also should be defined
+local wait_time = 5
+
+local killswitch-- = "c"  -- will immediately stop on signal from this port
+
+-- if any input port is defined, then this port will be skipped while playing the sequence
+
+
+-----------------------------------------------------
+-----------------------------------------------------
+-- FUNCTIONS-----------------------------------------
+	
+local blink = function()
+  for p, v in pairs(port) do
+	port[p] = false
+  end
+  
+  for _, p in ipairs(sequence[mem.var.step]) do
+	if p ~= switch and p ~= killswitch and p ~= detector then  
+		port[p] = true
+	end
+  end
+
+  mem.var.step = mem.var.step + 1
+  if mem.var.step > #sequence then mem.var.step = 1 end
+end
+
+-----------------------------------------------------
+
+local start_blink = function()
+  mem.var.blink = true
+  mem.var.time = 0
+  mem.var.step = 1
+  interrupt(rate, "blink")
+  blink()
+end
+
+-- set all ports off
+local end_blink = function()
+  mem.var.blink = false
+  for p, _ in pairs(port) do
+	port[p] = false
+  end
+  
+end
+
+-----------------------------------------------------
+-----------------------------------------------------
+-- EVENTS--------------------------------------------
 
 if event.type == "program" then
-  mem.var = {blink = true}
-  if rate < 1 then
-     mem.var.blink = false
-  else
-    interrupt(0.5, "blink")
+  mem.var = {
+	blink = false,
+	step = 1,  
+	time = 0,
+  }
+
+  if not switch or autostart then
+	start_blink()
   end
 end
 
+
+---Main timer
 if event.type == "interrupt" and event.iid == "blink" then
   if mem.var.blink then
-    for p, v in pairs(port) do
-      if blinks[p] == "blink" then
-        port[p] = not v
-      end
-    end
+	blink()  
+	if wait_time and wait_time > 0 and detector then
+	  mem.var.time = mem.var.time + rate
+	  if mem.var.time > wait_time then
+        end_blink()
+	  else
+		interrupt(rate, "blink")  
+	  end
+	else  
+      interrupt(rate, "blink")
+	end
   end
-  interrupt(rate, "blink")
 end
 
-if event.type == "on" or event.type == "off" then
+-----------
+-- Switch OFF
+
+if event.type == "off" then
   local prt = event.pin.name:lower()
-  if blinks[prt] == "switch" then
-    mem.var.blink = pin[prt]
-    if pin[prt] then
-      if rate < 1 then
-        interrupt(rate, "blink")
-      end
-    else
-      for p, v in pairs(port) do
-        if blinks[p] == "blink" then
-          port[p] = false
-        end
-      end
-    end
+  --Switch
+  if prt == switch then
+	  end_blink()
+  end
+end
+
+---Inputs
+if event.type == "on" then
+  local prt = event.pin.name:lower()
+	
+  --Switch
+  if prt == switch then
+      start_blink()
+  
+  --Detector  
+  elseif prt == detector then
+    mem.var.time = 0
+	
+  --Killswitch
+  elseif prt == killswitch then
+	end_blink()  
   end
 end
