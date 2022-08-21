@@ -3,7 +3,7 @@
 --uses LCD display to show if all ok or if something stuck
 --switches to the idle (slow) mode if no items is detected last 3 cycles
 --
---License: GNU AGPL
+--License: GNU GPL
 --Copyright Ghaydn (ghaydn@ya.ru), 2021
 --
 --https://github.com/Ghaydn/misc_minetest_scripts/blob/main/drawer_helper.lua
