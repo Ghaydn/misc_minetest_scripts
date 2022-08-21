@@ -1,4 +1,5 @@
 --BLINKER
+--version 1.0
 --can be used with mesecons-luacontroller and pipeworks luacontrolled tube
 --
 --blinks with pre-configured rate
@@ -19,7 +20,7 @@
 -----------------------------------------------------
 -- configurable variables----------------------------
 
-local rate = 0.5        
+local rate = 0.1        
 local sequence = { -- blinking sequence
 	{"d", "b"},    -- list or ports that will be ON at current step
 	{"b"},         -- all other ports will be OFF
@@ -27,12 +28,12 @@ local sequence = { -- blinking sequence
 	{"d", "c"},    -- any reasonable number of steps is allowed
 }
 
---- These variables can be not defined
+--- These variables can be undefined
 local switch = "a"      -- if undefined, then autostart will be enabled anyway
 local autostart = false
 
-local detector-- = "b"    -- if defined, wait time also should be defined
-local wait_time = 5
+local detector-- = "b"      -- if defined, then after wait time blinker will automatically
+local wait_time = 5			-- turn off if there will be no new signals on detector port
 
 local killswitch-- = "c"  -- will immediately stop on signal from this port
 
