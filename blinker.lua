@@ -1,5 +1,5 @@
 --BLINKER
---version 1.0
+--version 1.0.1
 --can be used with mesecons-luacontroller and pipeworks luacontrolled tube
 --
 --blinks with pre-configured rate
@@ -36,6 +36,7 @@ local detector-- = "b"      -- if defined, then after wait time blinker will aut
 local wait_time = 5			-- turn off if there will be no new signals on detector port
 
 local killswitch-- = "c"  -- will immediately stop on signal from this port
+
 
 -- if any input port is defined, then this port will be skipped while playing the sequence
 
@@ -100,7 +101,14 @@ if event.type == "interrupt" and event.iid == "blink" then
   if mem.var.blink then
 	blink()  
 	if wait_time and wait_time > 0 and detector then
-	  mem.var.time = mem.var.time + rate
+		
+	  -- add time only if no signal on detector
+	  if port[detector] then
+		mem.var.time = 0
+	  else
+		mem.var.time = mem.var.time + rate
+	  end
+	  
 	  if mem.var.time > wait_time then
         end_blink()
 	  else
