@@ -1,5 +1,34 @@
+
+
+
+
+
+--- THIS IS A OLD AND OUTDATED VERSION
+--- USE BLINKER_MEGA INSTEAD
+--- https://github.com/Ghaydn/misc_minetest_scripts/blob/main/blinker_mega.lua
+--- I'm keeping this file only for history
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --BLINKER
 --version 1.0.1
+
 --can be used with mesecons-luacontroller and pipeworks luacontrolled tube
 --
 --blinks with pre-configured rate
