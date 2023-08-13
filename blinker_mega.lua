@@ -1,20 +1,20 @@
---BLINKER
---version 1.1.0
---can be used with mesecons-luacontroller and pipeworks luacontrolled tube
---
---blinks with pre-configured rate
---can be turned on|off
---can automatically turn on after programming
---Will automatically turn off when no sinal on detector for some wait time
---(if wait_time > 0 and detector port is defined)
---Can blink in different phase
---
---
---License: GNU AGPL
---Copyright Ghaydn (ghaydn@ya.ru), 2022-2023
---
---https://github.com/Ghaydn/misc_minetest_scripts/blob/main/blinker.lua
---
+-- BLINKER
+-- version 1.1.0
+-- can be used with mesecons-luacontroller and pipeworks luacontrolled tube
+-- 
+-- blinks with pre-configured rate
+-- can be turned on|off
+-- can automatically turn on after programming
+-- Will automatically turn off when no sinal on detector for some wait time
+-- (if wait_time > 0 and detector port is defined)
+-- Can blink in different phase
+-- 
+-- 
+-- License: GNU AGPL
+-- Copyright Ghaydn (ghaydn@ya.ru), 2022-2023
+-- 
+-- https://github.com/Ghaydn/misc_minetest_scripts/blob/main/blinker_mega.lua
+-- 
 
 -----------------------------------------------------
 -----------------------------------------------------
