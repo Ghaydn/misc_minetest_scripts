@@ -1,5 +1,5 @@
 -- BLINKER
--- version 1.1.0
+-- version 1.2.0
 -- can be used with mesecons-luacontroller and pipeworks luacontrolled tube
 -- 
 -- blinks with pre-configured rate
@@ -8,10 +8,11 @@
 -- Will automatically turn off when no sinal on detector for some wait time
 -- (if wait_time > 0 and detector port is defined)
 -- Can blink in different phase
+-- Can periodically send digiline messages
 -- 
 -- 
 -- License: GNU AGPL
--- Copyright Ghaydn (ghaydn@ya.ru), 2022-2023
+-- Copyright Ghaydn (ghaydn@ya.ru), 2022-2024
 -- 
 -- https://github.com/Ghaydn/misc_minetest_scripts/blob/main/blinker_mega.lua
 -- 
@@ -24,8 +25,9 @@ local rate = 0.2
 local sequence = { 		-- blinking sequence
 	{"blue"},      		-- list or ports that will be ON at current step
 	{"white"},     		-- all other ports will be OFF
+	{{channel = "lcd", msg = "Bang!"}}  -- can also periodically send digiline messages
 --	{},            		-- there can be also empty steps with all ports off
---	{"red", "blue"},    -- any reasonable number of steps is allowed
+--	{"red", "blue", {channel = "foo", msg = "bar"}},    -- any reasonable number of steps is allowed
 }
 
 --- These variables can be undefined
@@ -39,6 +41,10 @@ local wait_time = 5				-- turn off if there will be no new signals on detector p
 local killswitch-- = "green"  	-- will immediately stop on signal from this port
 -- killswitch = "self"
 -- can also be "self", then an item passing through is acting as a killswitch
+
+-- Switch, killswitch and detector can also be digiline channel names.
+-- "Switch" channel accept messages "on" and "off"
+-- Other channels accept any messages
 
 
 -- if any input port is defined, then this port will be skipped while playing the sequence
@@ -64,8 +70,14 @@ local blink = function()
   end
   
   for _, p in ipairs(sequence[mem.var.step]) do
-	if p ~= switch and p ~= killswitch and p ~= detector then  
-		port[p] = true
+	if type(p) == "string" then
+		if p ~= switch and p ~= killswitch and p ~= detector then  
+			port[p] = true
+		end
+	elseif type(p) == "table" then
+		if p.channel ~= nil and p.msg ~= nil then
+			digiline_send(p.channel, p.msg)
+		end
 	end
   end
 
@@ -123,12 +135,12 @@ if event.type == "interrupt" and event.iid == "blink" then
 	  end
 	  
 	  if mem.var.time > wait_time then
-        end_blink()
+        	end_blink()
 	  else
 		interrupt(rate, "blink")  
 	  end
 	else  
-      interrupt(rate, "blink")
+   	   interrupt(rate, "blink")
 	end
   end
 end
@@ -185,4 +197,21 @@ if event.type == "item" then
 	end
 	
 	return sorting.misc
+end
+
+----------
+
+if event.type == "digiline" then
+	
+	if event.channel == switch then
+		if event.msg == "on" then
+			start_blink()
+		elseif event.msg == "off" then
+			end_blink()
+		end
+	elseif event.channel == "detector" then
+		mem.var.time = 0
+	elseif event.channel == "killswitch" then
+		end_blink()
+	end
 end
