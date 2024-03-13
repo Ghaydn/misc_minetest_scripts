@@ -8,7 +8,7 @@
 -- Will automatically turn off when no sinal on detector for some wait time
 -- (if wait_time > 0 and detector port is defined)
 -- Can blink in different phase
--- Can periodically send digiline messages
+-- Can accept and send digiline messages
 -- 
 -- 
 -- License: GNU AGPL
@@ -46,6 +46,19 @@ local killswitch-- = "green"  	-- will immediately stop on signal from this port
 -- "Switch" channel accept messages "on" and "off"
 -- Other channels accept any messages
 
+-- alternatively, it can accept digiline commands by this channel
+local digiline_channel = "blinker"
+
+-- messages can be:
+-- "on", "start", {command = "start"} - starts blinking
+-- "off", "stop", {command = "stop"} - stops blinking
+-- {command = "detected"} - acts like a detector
+--
+-- {command = "configure",     -- changes parameters, such as:
+--    sequence = {},              --
+--    rate = 0.2                  --
+--    sorting = {}                --
+-- }
 
 -- if any input port is defined, then this port will be skipped while playing the sequence
 
@@ -69,7 +82,7 @@ local blink = function()
 	port[p] = false
   end
   
-  for _, p in ipairs(sequence[mem.var.step]) do
+  for _, p in ipairs(mem.var.sequence[mem.var.step]) do
 	if type(p) == "string" then
 		if p ~= switch and p ~= killswitch and p ~= detector then  
 			port[p] = true
@@ -82,7 +95,7 @@ local blink = function()
   end
 
   mem.var.step = mem.var.step + 1
-  if mem.var.step > #sequence then mem.var.step = 1 end
+  if mem.var.step > #mem.var.sequence then mem.var.step = 1 end
 end
 
 -----------------------------------------------------
@@ -91,7 +104,7 @@ local start_blink = function()
   mem.var.time = 0
   mem.var.step = 1
   mem.var.blink = true
-  interrupt(rate, "blink")
+  interrupt(mem.var.rate, "blink")
   blink()
 end
 
@@ -113,6 +126,9 @@ if event.type == "program" then
 	blink = false,
 	step = 1,  
 	time = 0,
+	sequence = sequence,
+	rate = rate,
+	sorting = sorting,
   }
 
   if not switch or autostart then
@@ -131,16 +147,16 @@ if event.type == "interrupt" and event.iid == "blink" then
 	  if port[detector] then
 		mem.var.time = 0
 	  else
-		mem.var.time = mem.var.time + rate
+		mem.var.time = mem.var.time + mem.var.rate
 	  end
 	  
 	  if mem.var.time > wait_time then
-        	end_blink()
+        end_blink()
 	  else
-		interrupt(rate, "blink")  
+		interrupt(mem.var.rate, "blink")  
 	  end
 	else  
-   	   interrupt(rate, "blink")
+      interrupt(mem.var.rate, "blink")
 	end
   end
 end
@@ -192,11 +208,11 @@ if event.type == "item" then
 	local item = event.item.name
 	
 	-- sort items here
-	for template, tube in pairs(sorting) do
+	for template, tube in pairs(mem.var.sorting) do
 		if item == template then return tube end
 	end
 	
-	return sorting.misc
+	return mem.var.sorting.misc
 end
 
 ----------
@@ -209,9 +225,47 @@ if event.type == "digiline" then
 		elseif event.msg == "off" then
 			end_blink()
 		end
-	elseif event.channel == "detector" then
+	elseif event.channel == detector then
 		mem.var.time = 0
-	elseif event.channel == "killswitch" then
+	elseif event.channel == killswitch then
 		end_blink()
+	elseif channel == digiline_channel then
+		local msg = event.msg
+		if type(msg) == "string" then
+		
+			if msg == "on" or msg == "start" then
+				start_blink()
+				
+			elseif msg == "off" or msg == "stop" then
+				end_blink()
+			end
+			
+		elseif type(msg) == "table" then
+		
+			if msg.command == "start" or msg.command == "on" then
+				start_blink()
+				
+			elseif msg.command == "stop" or msg.command == "off" then
+				end_blink()
+				
+			elseif msg.command == "detected" then
+				mem.var.time = 0
+				
+			elseif msg.command == "configure" then
+			
+				if msg.sequence ~= nil and type(msg.sequence) == "table" then
+					mem.var.sequence = msg.sequence
+				end
+				
+				if msg.rate ~= nil and type(msg.rate) == "number" and msg.rate > 0 then
+					mem.var.rate = msg.rate
+				end
+				
+				if msg.sorting ~= nil and type(msg.sorting) == "table" then
+					mem.var.sorting = msg.sorting
+				end
+				
+			end
+		end
 	end
 end
