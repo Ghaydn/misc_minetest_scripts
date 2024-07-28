@@ -1,5 +1,5 @@
 -- BLINKER
--- version 1.2.0
+-- version 1.2.1
 -- can be used with mesecons-luacontroller and pipeworks luacontrolled tube
 -- 
 -- blinks with pre-configured rate
@@ -22,6 +22,7 @@
 -- configurable variables----------------------------
 
 local rate = 0.2
+local idle_rate = 2.0   -- if defined, idle mode isactive: go to slow blinking instead of turning off when no signal on detector for too long
 local sequence = { 		-- blinking sequence
 	{"blue"},      		-- list or ports that will be ON at current step
 	{"white"},     		-- all other ports will be OFF
@@ -68,14 +69,6 @@ local digiline_channel = "blinker"
 -- if any input port is defined, then this port will be skipped while playing the sequence
 
 
--- Lua tubes only
-local sorting = {
-	
-	["default:aspen_leaves"] = "blue",
-	["ethereal:orange_leaves"] = "blue",
-	["misc"] = "black",
-
-}
 -----------------------
 
 -----------------------------------------------------
@@ -84,13 +77,17 @@ local sorting = {
 
 local function blink()
   
-  digiline_send(lcd, "Timer: " .. tostring(wait_time - mem.var.time) .. ", step: "..tostring(mem.var.step))
+  if mem.wait_time > mem.time then
+	digiline_send(lcd, "Timer: " .. tostring(mem.wait_time - mem.time) .. ", step: "..tostring(mem.step))
+  else
+    digiline_send(lcd, "Idle. Step: "..tostring(mem.step))
+  end
   
   for p, v in pairs(port) do
 	port[p] = false
   end
   
-  for _, p in ipairs(mem.var.sequence[mem.var.step]) do
+  for _, p in ipairs(mem.sequence[mem.step]) do
 	if type(p) == "string" then
 		if p ~= switch and p ~= killswitch and p ~= detector then  
 			port[p] = true
@@ -102,10 +99,10 @@ local function blink()
 	end
   end
 
-  mem.var.step = mem.var.step + 1
-  if mem.var.step > #mem.var.sequence then mem.var.step = 1 end
+  mem.step = mem.step + 1
+  if mem.step > #mem.sequence then mem.step = 1 end
   
-  --if mem.var.step == 1 and detector ~= nil then
+  --if mem.step == 1 and detector ~= nil then
 	digiline_send(detector, "inventory")
   --end
 end
@@ -113,10 +110,10 @@ end
 -----------------------------------------------------
 
 local function start_blink ()
-  mem.var.time = 0
-  mem.var.step = 1
-  mem.var.blink = true
-  interrupt(mem.var.rate, "blink")
+  mem.time = 0
+  mem.step = 1
+  mem.blink = true
+  interrupt(mem.rate, "blink")
   blink()
   digiline_send(lcd, "Starting blinks")
 end
@@ -125,7 +122,7 @@ end
 
 -- set all ports off
 local function end_blink()
-  mem.var.blink = false
+  mem.blink = false
   for p, _ in pairs(port) do
 	port[p] = false
   end
@@ -136,35 +133,58 @@ end
 
 local function after_blink()
 
-	if mem.var.wait_time and mem.var.wait_time > 0 and detector then
+	if mem.wait_time and mem.wait_time > 0 and detector then
 		
 	  -- add time only if no signal on detector
 	  if port[detector] then
-		mem.var.time = 0
+		mem.time = 0
 	  else
-		mem.var.time = mem.var.time + mem.var.rate
+		mem.time = mem.time + mem.rate
 	  end
 	  
-	  if mem.var.time > mem.var.wait_time then
-		end_blink()
+	  if mem.time > mem.wait_time then
+	    if mem.idle_rate then
+		  interrupt(mem.idle_rate, "blink")  
+	    else
+		  end_blink()
+		end
 	  else
-		interrupt(mem.var.rate, "blink")  
+		interrupt(mem.rate, "blink")  
 	  end
 	else  
-	  interrupt(mem.var.rate, "blink")
+	  interrupt(mem.rate, "blink")
 	end
 end
 
 -----------------------------------------------------
 
+-- detector triggered
+local function detected()
+  -- check if can be turned on and is turned on
+  if mem.switch and not pin[mem.switch:lower()] then
+    return
+  end
+  -- check if needs restart
+  if mem.wait_time and mem.time > mem.wait_time then
+    mem.time = mem.rate
+	blink()
+	after_blink()
+  else
+    mem.time = 0
+  end
+end
+
+-----------------------------------------------------
+
 local function ready()
-  mem.var = {
+  mem = {
 	blink = false,
 	step = 1,  
 	time = 0,
 	wait_time = wait_time,
 	sequence = sequence,
 	rate = rate,
+	idle_rate = idle_rate,
 	sorting = sorting,
 	count = 0,
   }
@@ -187,24 +207,24 @@ local function msg_command(msg)
 		end_blink()
 		
 	elseif msg.command == "detected" then
-		mem.var.time = 0
+		detected()
 		
 	elseif msg.command == "configure" then
 
 		if msg.sequence ~= nil and type(msg.sequence) == "table" then
-			mem.var.sequence = msg.sequence
+			mem.sequence = msg.sequence
 		end
 		
 		if msg.rate ~= nil and type(msg.rate) == "number" and msg.rate > 0 then
-			mem.var.rate = msg.rate
+			mem.rate = msg.rate
 		end
 		
 		if msg.sorting ~= nil and type(msg.sorting) == "table" then
-			mem.var.sorting = msg.sorting
+			mem.sorting = msg.sorting
 		end
 		
 		if msg.wait_time ~= nil and type(msg.wait_time) == "number" then
-			mem.var.wait_time = msg.wait_time
+			mem.wait_time = msg.wait_time
 		end
 		
 	end
@@ -223,12 +243,12 @@ local function digiline(channel, msg)
 		
 	elseif channel == detector then
 		if msg.inventory ~= nil then
-			mem.var.count = 0
+			mem.count = 0
 			for _, v in ipairs(msg.inventory) do
-				mem.var.count = mem.var.count + v.count
+				mem.count = mem.count + v.count
 			end
-			if mem.var.count > 0 then
-				mem.var.time = 0
+			if mem.count > 0 then
+				mem.time = 0
 			end
 		end
 		
@@ -263,7 +283,7 @@ end
 
 ---Main timer
 if event.type == "interrupt" and event.iid == "blink" then
-  if mem.var.blink then
+  if mem.blink then
 	blink()
 	after_blink()
   end
@@ -285,12 +305,12 @@ if event.type == "on" then
   local prt = event.pin.name:lower()
 	
   --Switch
-  if prt == switch and not mem.var.blink then
+  if prt == switch and not mem.blink then
       start_blink()
   
   --Detector  
   elseif prt == detector then
-    mem.var.time = 0
+    detected()
 	
   --Killswitch
   elseif prt == killswitch then
@@ -305,7 +325,7 @@ if event.type == "item" then
 	
 	-- reset wait time if self is detector
 	if detector == "self" then
-		mem.var.time = 0
+      detected()
 	end
 	
 	-- immediately stop if an item is passing through
@@ -316,11 +336,11 @@ if event.type == "item" then
 	local item = event.item.name
 	
 	-- sort items here
-	for template, tube in pairs(mem.var.sorting) do
+	for template, tube in pairs(mem.sorting) do
 		if item == template then return tube end
 	end
 	
-	return mem.var.sorting.misc
+	return mem.sorting.misc
 end
 
 ----------
